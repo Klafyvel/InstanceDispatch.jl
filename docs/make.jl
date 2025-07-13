@@ -18,6 +18,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo = "github.com/klafyvel/InstanceDispatch.jl",
+    repo = "github.com/Klafyvel/InstanceDispatch.jl",
     devbranch = "main",
 )
