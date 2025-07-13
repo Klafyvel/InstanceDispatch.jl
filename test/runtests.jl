@@ -39,6 +39,24 @@ module InstanceDispatchTest
         return "Goodbye " * who
     end
     @instancedispatch greet3(::GreetEnum = Hello, who = "World!")
+
+    # type annotations
+    function greet4(::Val{Hello}, who; punctuation)
+        return "Hello " * who * punctuation
+    end
+    function greet4(::Val{Goodbye}, who; punctuation)
+        return "Goodbye " * who * punctuation
+    end
+    @instancedispatch greet4(e::GreetEnum, who::String; punctuation::String)
+
+    # default values in kwargs
+    function greet5(::Val{Hello}, who; punctuation)
+        return "Hello " * who * punctuation
+    end
+    function greet5(::Val{Goodbye}, who; punctuation)
+        return "Goodbye " * who * punctuation
+    end
+    @instancedispatch greet5(e::GreetEnum, who; punctuation::String = ".")
 end
 
 @testset "InstanceDispatch.jl" begin
@@ -68,5 +86,14 @@ end
         @test InstanceDispatchTest.greet3() == "Hello World!"
         @test InstanceDispatchTest.greet3(InstanceDispatchTest.Hello, "me") == "Hello me"
         @test InstanceDispatchTest.greet3(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+
+        @test length(methods(InstanceDispatchTest.greet4)) == 3
+        @test InstanceDispatchTest.greet4(InstanceDispatchTest.Hello, "me", punctuation = ".") == "Hello me."
+        @test InstanceDispatchTest.greet4(InstanceDispatchTest.Goodbye, "me", punctuation = ".") == "Goodbye me."
+
+        @test length(methods(InstanceDispatchTest.greet5)) == 3
+        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me") == "Hello me."
+        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me", punctuation = "!") == "Hello me!"
+        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Goodbye, "me", punctuation = "!") == "Goodbye me!"
     end
 end
