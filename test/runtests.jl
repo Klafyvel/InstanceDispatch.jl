@@ -6,94 +6,136 @@ using InstanceDispatch
 module InstanceDispatchTest
     using InstanceDispatch
     @enum GreetEnum Hello Goodbye
-
-    function greet(::Val{Hello}, who)
-        return "Hello " * who
-    end
-    function greet(::Val{Goodbye}, who)
-        return "Goodbye " * who
-    end
-    @instancedispatch greet(::GreetEnum, who)
-
-    #alternative syntaxes
-    function greet1(::Val{Hello}, who)
-        return "Hello " * who
-    end
-    function greet1(::Val{Goodbye}, who)
-        return "Goodbye " * who
-    end
-    @instancedispatch greet1(e::GreetEnum, who)
-
-    function greet2(::Val{Hello}, who; punctuation)
-        return "Hello " * who * punctuation
-    end
-    function greet2(::Val{Goodbye}, who; punctuation)
-        return "Goodbye " * who * punctuation
-    end
-    @instancedispatch greet2(e::GreetEnum, args...; kwargs...)
-
-    function greet3(::Val{Hello}, who)
-        return "Hello " * who
-    end
-    function greet3(::Val{Goodbye}, who)
-        return "Goodbye " * who
-    end
-    @instancedispatch greet3(::GreetEnum = Hello, who = "World!")
-
-    # type annotations
-    function greet4(::Val{Hello}, who; punctuation)
-        return "Hello " * who * punctuation
-    end
-    function greet4(::Val{Goodbye}, who; punctuation)
-        return "Goodbye " * who * punctuation
-    end
-    @instancedispatch greet4(e::GreetEnum, who::String; punctuation::String)
-
-    # default values in kwargs
-    function greet5(::Val{Hello}, who; punctuation)
-        return "Hello " * who * punctuation
-    end
-    function greet5(::Val{Goodbye}, who; punctuation)
-        return "Goodbye " * who * punctuation
-    end
-    @instancedispatch greet5(e::GreetEnum, who; punctuation::String = ".")
 end
 
 @testset "InstanceDispatch.jl" begin
     @testset "Code quality (Aqua.jl)" begin
         Aqua.test_all(InstanceDispatch)
     end
+
     @testset "Code linting (JET.jl)" begin
         JET.test_package(InstanceDispatch; target_defined_modules = true)
     end
-    # Write your tests here.
+
     @testset "@instancedispatch macro" begin
-        @test length(methods(InstanceDispatchTest.greet)) == 3
-        @test InstanceDispatchTest.greet(InstanceDispatchTest.Hello, "me") == "Hello me"
-        @test InstanceDispatchTest.greet(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
-        @test_opt InstanceDispatchTest.greet(InstanceDispatchTest.Hello, "me")
+        @testset "Basic usage." begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet(::GreetEnum, who)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet)) == 3
+            @test InstanceDispatchTest.greet(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+            @test_opt InstanceDispatchTest.greet(InstanceDispatchTest.Hello, "me")
+        end
 
-        #alternative syntaxes
-        @test length(methods(InstanceDispatchTest.greet1)) == 3
-        @test InstanceDispatchTest.greet1(InstanceDispatchTest.Hello, "me") == "Hello me"
-        @test InstanceDispatchTest.greet1(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        @testset "Named enum parameter" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet1(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet1(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet1(enum::GreetEnum, who)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet1)) == 3
+            @test InstanceDispatchTest.greet1(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet1(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        end
 
-        @test length(methods(InstanceDispatchTest.greet2)) == 3
-        @test InstanceDispatchTest.greet2(InstanceDispatchTest.Hello, "me", punctuation = ".") == "Hello me."
-        @test InstanceDispatchTest.greet2(InstanceDispatchTest.Goodbye, "me", punctuation = ".") == "Goodbye me."
+        @testset "Keyword parameter" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet2(::Val{Hello}, who; punctuation)
+                        return "Hello " * who * punctuation
+                    end
+                    function greet2(::Val{Goodbye}, who; punctuation)
+                        return "Goodbye " * who * punctuation
+                    end
+                    @instancedispatch greet2(e::GreetEnum, args...; kwargs...)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet2)) == 3
+            @test InstanceDispatchTest.greet2(InstanceDispatchTest.Hello, "me", punctuation = ".") == "Hello me."
+            @test InstanceDispatchTest.greet2(InstanceDispatchTest.Goodbye, "me", punctuation = ".") == "Goodbye me."
+        end
 
-        @test length(methods(InstanceDispatchTest.greet3)) == 5
-        @test InstanceDispatchTest.greet3() == "Hello World!"
-        @test InstanceDispatchTest.greet3(InstanceDispatchTest.Hello, "me") == "Hello me"
-        @test InstanceDispatchTest.greet3(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        @testset "Default values" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet3(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet3(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet3(::GreetEnum = Hello, who = "World!")
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet3)) == 5
+            @test InstanceDispatchTest.greet3() == "Hello World!"
+            @test InstanceDispatchTest.greet3(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet3(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        end
 
-        @test length(methods(InstanceDispatchTest.greet4)) == 3
-        @test InstanceDispatchTest.greet4(InstanceDispatchTest.Hello, "me", punctuation = ".") == "Hello me."
-        @test InstanceDispatchTest.greet4(InstanceDispatchTest.Goodbye, "me", punctuation = ".") == "Goodbye me."
+        @testset "Type annotations" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet4(::Val{Hello}, who; punctuation)
+                        return "Hello " * who * punctuation
+                    end
+                    function greet4(::Val{Goodbye}, who; punctuation)
+                        return "Goodbye " * who * punctuation
+                    end
+                    @instancedispatch greet4(e::GreetEnum, who::String; punctuation::String)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet4)) == 3
+            @test InstanceDispatchTest.greet4(InstanceDispatchTest.Hello, "me", punctuation = ".") == "Hello me."
+            @test InstanceDispatchTest.greet4(InstanceDispatchTest.Goodbye, "me", punctuation = ".") == "Goodbye me."
+        end
 
-        @test length(methods(InstanceDispatchTest.greet5)) == 3
-        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me") == "Hello me."
-        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me", punctuation = "!") == "Hello me!"
-        @test InstanceDispatchTest.greet5(InstanceDispatchTest.Goodbye, "me", punctuation = "!") == "Goodbye me!"
+        @testset "Default values in kwargs" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet5(::Val{Hello}, who; punctuation)
+                        return "Hello " * who * punctuation
+                    end
+                    function greet5(::Val{Goodbye}, who; punctuation)
+                        return "Goodbye " * who * punctuation
+                    end
+                    @instancedispatch greet5(e::GreetEnum, who; punctuation::String = ".")
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet5)) == 3
+            @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me") == "Hello me."
+            @test InstanceDispatchTest.greet5(InstanceDispatchTest.Hello, "me", punctuation = "!") == "Hello me!"
+            @test InstanceDispatchTest.greet5(InstanceDispatchTest.Goodbye, "me", punctuation = "!") == "Goodbye me!"
+        end
+
+        @testset "Inadequate expressions" begin
+            # not a function call
+            @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))
+            !
+            # Not enough arguments
+            @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet()))
+            # Wrong type argument for the enum
+            @test_throws MethodError InstanceDispatchTest.eval(:(@instancedispatch greet(e)))
+            # Slurping is not supported
+            @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum...)))
+            # The ONLY requirement of the package is to have a `Base.instances` method!
+            @test_throws MethodError InstanceDispatchTest.eval(:(@instancedispatch greet(e::Int)))
+
+        end
     end
 end
