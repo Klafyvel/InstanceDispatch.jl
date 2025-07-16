@@ -123,6 +123,23 @@ end
             @test InstanceDispatchTest.greet5(InstanceDispatchTest.Goodbye, "me", punctuation = "!") == "Goodbye me!"
         end
 
+        @testset "Where clause" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet6(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet6(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet6(e::GreetEnum, who::T) where {T <: AbstractString}
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet6)) == 3
+            @test InstanceDispatchTest.greet6(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet6(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))

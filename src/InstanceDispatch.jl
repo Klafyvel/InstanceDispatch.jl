@@ -36,6 +36,10 @@ end
 ```
 """
 macro instancedispatch(fcall)
+    has_where_call = @capture(fcall, newfcall_ where {T__})
+    if has_where_call
+        fcall = newfcall
+    end
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
     original_arguments = splitarg.(args)
     length(original_arguments) ≥ 1 || throw(ArgumentError("@instancedispatch expects at least one argument to the call: the enumeration type. Example: `@instancedispatch foo(::MyEnum)`. Got $(args)."))
@@ -64,6 +68,12 @@ macro instancedispatch(fcall)
     enum_argument_name = exex(enum_argument_name)
     callee_arguments = map(buildcalleearg, callee_arguments)
     callee_kwarguments = map(buildcalleearg, splitarg.(something(kwargs, [])))
+    fdef = if has_where_call
+        types = exex.(T)
+        :(Expr(:function, Expr(:where, Expr(:call, $fname_expr, $(definition_arguments...)), $(types...)), ifelseblock))
+    else
+        :(Expr(:function, Expr(:call, $fname_expr, $(definition_arguments...)), ifelseblock))
+    end
     return Expr(
         :escape, quote
             let
@@ -81,7 +91,7 @@ macro instancedispatch(fcall)
                     )
                 end
                 ifelseblock.head = :if
-                Expr(:function, Expr(:call, $fname_expr, $(definition_arguments...)), ifelseblock)
+                $fdef
             end |> eval
         end
     )
