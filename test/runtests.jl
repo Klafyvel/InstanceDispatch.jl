@@ -143,6 +143,44 @@ end
             @test InstanceDispatchTest.greet6(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
         end
 
+        @testset "Unnamed arguments" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet7(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet7(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet7(e::GreetEnum, ::String)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet7)) == 3
+            @test InstanceDispatchTest.greet7(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet7(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+        end
+
+        @testset "Val parameters prior to enum" begin
+            InstanceDispatchTest.eval(
+                quote
+                    @enum TitleEnum Citizen Comrade
+                    title(::Val{Citizen}) = "citizen"
+                    title(::Val{Comrade}) = "comrade"
+                    function greet8(::Val{Hello}, t::Val, who)
+                        return join(["Hello", title(t), who], " ")
+                    end
+                    function greet8(::Val{Goodbye}, t::Val, who)
+                        return join(["Goodbye", title(t), who], " ")
+                    end
+                    @instancedispatch greet8(::GreetEnum, t::TitleEnum, who)
+                    @instancedispatch greet8(::Val, t::TitleEnum, who)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet8)) == 4
+            @test InstanceDispatchTest.greet8(InstanceDispatchTest.Hello, InstanceDispatchTest.Citizen, "me") == "Hello citizen me"
+            @test InstanceDispatchTest.greet8(InstanceDispatchTest.Goodbye, InstanceDispatchTest.Comrade, "me") == "Goodbye comrade me"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))

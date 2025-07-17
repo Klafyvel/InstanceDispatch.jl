@@ -12,6 +12,8 @@ buildcalleearg(splitted) = ifelse(splitted[3], exex(Expr(:..., splitted[1])), ex
 Write a specialized function to dispatch on instances values of type `T`. The only
 reauirement is that `Type{T}` has its own method for `Base.instances`.
 
+You are allowed to chain dispatching, *i.e.* dispatching on multiple instancied types. This is done by having `Any` or `Val` parameter types prepending the enumeration. See examples.
+
 ## Examples
 ```julia
 @enum GreetEnum Hello Goodbye
@@ -34,6 +36,25 @@ function greet(e::GreetEnum, who)
     else end
 end
 ```
+
+You can also dispatch on multiple enums. In that case, it is advised to explicitely
+state the types as much as possible.
+
+```julia
+@enum TitleEnum Citizen Comrade
+title(::Val{Citizen}) = "citizen"
+title(::Val{Comrade}) = "comrade"
+function greet(::Val{Hello}, t::Val, who)
+    return join(["Hello", title(t), who], " ")
+end
+function greet(::Val{Goodbye}, t::Val, who)
+    return join(["Goodbye", title(t), who], " ")
+end
+@instancedispatch greet(::GreetEnum, t::TitleEnum, who)
+@instancedispatch greet(::Val, t::TitleEnum, who)
+```
+
+All the arguments in the function call given to the macro will be passed in the invocations. In case they are anonymous, new names will be created using `gensym`. `where` statements are supported.
 """
 macro instancedispatch(fcall)
     has_where_call = @capture(fcall, newfcall_ where {T__})
@@ -47,25 +68,29 @@ macro instancedispatch(fcall)
     enum_argument_name = :e
     enum_type = :Any
     definition_arguments = []
+    callee_arguments_pre = []
     callee_arguments = []
     isenumdef = true
     for arg in original_arguments
         arg_name, arg_type, slurp, default = arg
-        if !isenumdef
-            push!(definition_arguments, arg)
-            isnothing(arg_name) || push!(callee_arguments, arg)
-        else
+        if isenumdef && namify(arg_type) ∉ (:Val, :Any)
             isenumdef = false
             enum_argument_name = something(arg_name, enum_argument_name)
             (arg_type isa Symbol) || throw(ArgumentError("The dispatched type must be a known type, not $(prettify(arg_type))."))
             enum_type = arg_type
             slurp && throw(ArgumentError("The dispatched argument cannot be a slurp!"))
             push!(definition_arguments, (enum_argument_name, arg_type, false, default))
+        else
+            arg = (something(arg_name, gensym(arg_type)), arg_type, slurp, default)
+            push!(definition_arguments, arg)
+            isenumdef && push!(callee_arguments_pre, arg)
+            !isenumdef && push!(callee_arguments, arg)
         end
     end
     definition_arguments = map(exex ∘ splat(combinearg), definition_arguments)
     isnothing(kwargs) || pushfirst!(definition_arguments, exex(Expr(:parameters, kwargs...)))
     enum_argument_name = exex(enum_argument_name)
+    callee_arguments_pre = map(buildcalleearg, callee_arguments_pre)
     callee_arguments = map(buildcalleearg, callee_arguments)
     callee_kwarguments = map(buildcalleearg, splitarg.(something(kwargs, [])))
     fdef = if has_where_call
@@ -84,6 +109,7 @@ macro instancedispatch(fcall)
                             :return, Expr(
                                 :call, $fname_expr,
                                 Expr(:parameters, $(callee_kwarguments...)),
+                                $(callee_arguments_pre...),
                                 Expr(:call, :Val, Symbol(instance)),
                                 $(callee_arguments...)
                             )
