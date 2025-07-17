@@ -1,7 +1,10 @@
 using Test
 using Aqua
-using JET
 using InstanceDispatch
+import Pkg
+
+Pkg.add("JET")
+using JET
 
 module InstanceDispatchTest
     using InstanceDispatch
