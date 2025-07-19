@@ -48,3 +48,7 @@ end
 ```julia
 import Pkg; Pkg.add("InstanceDispatch")
 ```
+
+## Alternatives
+
+* [ValSplit.jl](https://github.com/ztangent/ValSplit.jl) essentially performs the same task for `Symbol`-based value type dispatch.
