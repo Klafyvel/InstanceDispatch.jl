@@ -64,7 +64,7 @@ macro instancedispatch(fcall)
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
     original_arguments = splitarg.(args)
     length(original_arguments) ≥ 1 || throw(ArgumentError("@instancedispatch expects at least one argument to the call: the enumeration type. Example: `@instancedispatch foo(::MyEnum)`. Got $(args)."))
-    fname_expr = exex(fname)
+    fname_expr = QuoteNode(fname)
     enum_argument_name = :e
     enum_type = :Any
     definition_arguments = []

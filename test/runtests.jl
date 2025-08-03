@@ -181,6 +181,19 @@ end
             @test InstanceDispatchTest.greet8(InstanceDispatchTest.Goodbye, InstanceDispatchTest.Comrade, "me") == "Goodbye comrade me"
         end
 
+        @testset "Dotted function names" begin
+            InstanceDispatchTest.eval(
+                quote
+                    Base.:*(::Val{Hello}, n) = "Hello " * n
+                    Base.:*(::Val{Goodbye}, n) = "Goodbye " * n
+                    @instancedispatch (Base.:*)(::GreetEnum, n)
+                end
+            )
+            @test hasmethod(Base.:*, Tuple{InstanceDispatchTest.GreetEnum, Any})
+            @test InstanceDispatchTest.Hello * "me" == "Hello me"
+            @test InstanceDispatchTest.Goodbye * "me" == "Goodbye me"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))
