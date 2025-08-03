@@ -1,6 +1,6 @@
 name = "InstanceDispatch"
 uuid = "23e940aa-d356-45ed-adbd-bebf2015d7d9"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Hugo Levy-Falk <hugo@klafyvel.me> and contributors"]
 
 [deps]
