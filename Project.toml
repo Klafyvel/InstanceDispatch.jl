@@ -1,13 +1,14 @@
 name = "InstanceDispatch"
 uuid = "23e940aa-d356-45ed-adbd-bebf2015d7d9"
-version = "0.1.1"
 authors = ["Hugo Levy-Falk <hugo@klafyvel.me> and contributors"]
+version = "0.1.1"
 
 [deps]
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 
 [compat]
 Aqua = "0.8"
+EnumX = "1.0.5"
 MacroTools = "0.5"
 Pkg = "1"
 Test = "1"
@@ -15,8 +16,9 @@ julia = "1.11"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+EnumX = "4e289a0a-7415-4d19-859d-a7e5c4648b56"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Aqua", "Test", "Pkg"]
+test = ["Aqua", "Test", "Pkg", "EnumX"]

@@ -194,6 +194,34 @@ end
             @test InstanceDispatchTest.Goodbye * "me" == "Goodbye me"
         end
 
+        @testset "EnumX" begin
+            InstanceDispatchTest.eval(:(using EnumX))
+            InstanceDispatchTest.eval(
+                quote
+                    @enumx Fruit Apple Banana
+                    greet9(::Val{Fruit.Apple}) = "Hi apple"
+                    greet9(::Val{Fruit.Banana}) = "Hi banana"
+                    @instancedispatch greet9(::Fruit.T)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet9)) == 3
+            @test InstanceDispatchTest.greet9(InstanceDispatchTest.Fruit.Apple) == "Hi apple"
+            @test InstanceDispatchTest.greet9(InstanceDispatchTest.Fruit.Banana) == "Hi banana"
+        end
+
+        @testset "JuliaSyntax" begin
+            InstanceDispatchTest.eval(
+                quote
+                    greet10(::Val{Base.JuliaSyntax.K"for"}) = "Hi for"
+                    greet10(::Val{Base.JuliaSyntax.K"while"}) = "Hi while"
+                    @instancedispatch greet10(::Base.JuliaSyntax.Kind)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet10)) == 3
+            @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"for") == "Hi for"
+            @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"while") == "Hi while"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))

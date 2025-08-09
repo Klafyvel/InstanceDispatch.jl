@@ -1,10 +1,7 @@
 module InstanceDispatch
 
 using MacroTools
-exex(s::Symbol) = Expr(:call, :Symbol, String(s))
-exex(s) = s
-exex(e::Expr) = Expr(:call, :Expr, exex(e.head), map(exex, e.args)...)
-buildcalleearg(splitted) = ifelse(splitted[3], exex(Expr(:..., splitted[1])), exex(splitted[1]))
+buildcalleearg(splitted) = ifelse(splitted[3], QuoteNode(Expr(:..., splitted[1])), QuoteNode(splitted[1]))
 
 """
     @instancedispatch myfunction(::T, args...; kwargs...)
@@ -76,7 +73,6 @@ macro instancedispatch(fcall)
         if isenumdef && namify(arg_type) ∉ (:Val, :Any)
             isenumdef = false
             enum_argument_name = something(arg_name, enum_argument_name)
-            (arg_type isa Symbol) || throw(ArgumentError("The dispatched type must be a known type, not $(prettify(arg_type))."))
             enum_type = arg_type
             slurp && throw(ArgumentError("The dispatched argument cannot be a slurp!"))
             push!(definition_arguments, (enum_argument_name, arg_type, false, default))
@@ -87,14 +83,14 @@ macro instancedispatch(fcall)
             !isenumdef && push!(callee_arguments, arg)
         end
     end
-    definition_arguments = map(exex ∘ splat(combinearg), definition_arguments)
-    isnothing(kwargs) || pushfirst!(definition_arguments, exex(Expr(:parameters, kwargs...)))
-    enum_argument_name = exex(enum_argument_name)
+    definition_arguments = map(QuoteNode ∘ splat(combinearg), definition_arguments)
+    isnothing(kwargs) || pushfirst!(definition_arguments, QuoteNode(Expr(:parameters, kwargs...)))
+    enum_argument_name = QuoteNode(enum_argument_name)
     callee_arguments_pre = map(buildcalleearg, callee_arguments_pre)
     callee_arguments = map(buildcalleearg, callee_arguments)
     callee_kwarguments = map(buildcalleearg, splitarg.(something(kwargs, [])))
     fdef = if has_where_call
-        types = exex.(T)
+        types = QuoteNode.(T)
         :(Expr(:function, Expr(:where, Expr(:call, $fname_expr, $(definition_arguments...)), $(types...)), ifelseblock))
     else
         :(Expr(:function, Expr(:call, $fname_expr, $(definition_arguments...)), ifelseblock))
@@ -104,13 +100,13 @@ macro instancedispatch(fcall)
             let
                 ifelseblock = foldr(instances($enum_type), init = :()) do instance, r
                     Expr(
-                        :elseif, Expr(:call, :(==), $enum_argument_name, Symbol(instance)),
+                        :elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)),
                         Expr(
                             :return, Expr(
                                 :call, $fname_expr,
                                 Expr(:parameters, $(callee_kwarguments...)),
                                 $(callee_arguments_pre...),
-                                Expr(:call, :Val, Symbol(instance)),
+                                Expr(:call, :Val, QuoteNode(instance)),
                                 $(callee_arguments...)
                             )
                         ), r
