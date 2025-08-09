@@ -209,17 +209,19 @@ end
             @test InstanceDispatchTest.greet9(InstanceDispatchTest.Fruit.Banana) == "Hi banana"
         end
 
-        @testset "JuliaSyntax" begin
-            InstanceDispatchTest.eval(
-                quote
-                    greet10(::Val{Base.JuliaSyntax.K"for"}) = "Hi for"
-                    greet10(::Val{Base.JuliaSyntax.K"while"}) = "Hi while"
-                    @instancedispatch greet10(::Base.JuliaSyntax.Kind)
-                end
-            )
-            @test length(methods(InstanceDispatchTest.greet10)) == 3
-            @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"for") == "Hi for"
-            @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"while") == "Hi while"
+        @static if VERSION < v"1.12-"
+            @testset "JuliaSyntax" begin
+                InstanceDispatchTest.eval(
+                    quote
+                        greet10(::Val{Base.JuliaSyntax.K"for"}) = "Hi for"
+                        greet10(::Val{Base.JuliaSyntax.K"while"}) = "Hi while"
+                        @instancedispatch greet10(::Base.JuliaSyntax.Kind)
+                    end
+                )
+                @test length(methods(InstanceDispatchTest.greet10)) == 3
+                @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"for") == "Hi for"
+                @test InstanceDispatchTest.greet10(Base.JuliaSyntax.K"while") == "Hi while"
+            end
         end
 
         @testset "Inadequate expressions" begin
