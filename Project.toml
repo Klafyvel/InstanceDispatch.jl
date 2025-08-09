@@ -1,7 +1,7 @@
 name = "InstanceDispatch"
 uuid = "23e940aa-d356-45ed-adbd-bebf2015d7d9"
 authors = ["Hugo Levy-Falk <hugo@klafyvel.me> and contributors"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
