@@ -61,11 +61,32 @@ All the arguments in the function call given to the macro will be passed in the 
     end
     ```
     That return a default value.
+
+It is possible to use type annotations to help Julia figure out the type of the return value:
+```julia
+@enum GreetEnum Hello Goodbye
+function greet(::Val{Hello}, who)
+    return "Hello " * who
+end
+function greet(::Val{Goodbye}, who)
+    return "Goodbye " * who
+end
+@instancedispatch greet(::GreetEnum, who)::String
+```
 """
 macro instancedispatch(fcall)
-    has_where_call = @capture(fcall, newfcall_ where {T__})
-    if has_where_call
+    has_type_annotation = @capture(fcall, newfcall_::R_)
+    if has_type_annotation
+        has_where_call = @capture(R, newR_ where {T__})
+        if has_where_call
+            R = newR 
+        end
         fcall = newfcall
+    else
+        has_where_call = @capture(fcall, newfcall_ where {T__})
+        if has_where_call
+            fcall = newfcall
+        end
     end
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
     original_arguments = splitarg.(args)
@@ -98,16 +119,22 @@ macro instancedispatch(fcall)
     callee_arguments_pre = map(buildcalleearg, callee_arguments_pre)
     callee_arguments = map(buildcalleearg, callee_arguments)
     callee_kwarguments = map(buildcalleearg, splitarg.(something(kwargs, [])))
+    fdefcall = if has_type_annotation
+        annotation = QuoteNode(R)
+        :(Expr(:(::), Expr(:call, $fname_expr, $(definition_arguments...)), $(annotation)))
+    else
+        :(Expr(:call, $fname_expr, $(definition_arguments...)))
+    end
     fdef = if has_where_call
         types = QuoteNode.(T)
-        :(Expr(:function, Expr(:where, Expr(:call, $fname_expr, $(definition_arguments...)), $(types...)), ifelseblock))
+        :(Expr(:function, Expr(:where, $fdefcall, $(types...)), ifelseblock))
     else
-        :(Expr(:function, Expr(:call, $fname_expr, $(definition_arguments...)), ifelseblock))
+        :(Expr(:function, $fdefcall, ifelseblock))
     end
     return Expr(
         :escape, quote
             let
-                ifelseblock = foldr(instances($enum_type), init = :()) do instance, r
+                ifelseblock = foldr(instances($enum_type), init=:()) do instance, r
                     Expr(
                         :elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)),
                         Expr(

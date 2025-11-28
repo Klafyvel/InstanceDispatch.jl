@@ -191,6 +191,33 @@ end
             @test InstanceDispatchTest.Goodbye * "me" == "Goodbye me"
         end
 
+        @testset "Type annotations" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet_annotated(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet_annotated(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet_annotated(::GreetEnum, who)::String
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet_annotated)) == 3
+            @test InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+            @test_opt InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Hello, "me")
+            InstanceDispatchTest.eval(
+                quote
+                    @instancedispatch greet_annotated(::GreetEnum, who::T)::T where {T <: String}
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet_annotated)) == 4
+            @test InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+            @test_opt InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Hello, "me")
+        end
+
         @testset "EnumX" begin
             InstanceDispatchTest.eval(:(using EnumX))
             InstanceDispatchTest.eval(
