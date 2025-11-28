@@ -1,0 +1,6 @@
+[deps]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+EnumX = "4e289a0a-7415-4d19-859d-a7e5c4648b56"
+InstanceDispatch = "23e940aa-d356-45ed-adbd-bebf2015d7d9"
+JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
