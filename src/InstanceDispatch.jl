@@ -52,6 +52,15 @@ end
 ```
 
 All the arguments in the function call given to the macro will be passed in the invocations. In case they are anonymous, new names will be created using `gensym`. `where` statements are supported.
+
+!!! warning "Method availability"
+    It is important that there is a method for each instance of your enum, otherwise you might encounter errors, or worse, trigger the ire of JET.jl! It can be useful to define catch-all methods such as:
+    ```julia 
+    function greet(::Val, _, _)
+        #...
+    end
+    ```
+    That return a default value.
 """
 macro instancedispatch(fcall)
     has_where_call = @capture(fcall, newfcall_ where {T__})
