@@ -218,6 +218,24 @@ end
             @test_opt InstanceDispatchTest.greet_annotated(InstanceDispatchTest.Hello, "me")
         end
 
+        @testset "Macro keyword" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet_kw(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet_kw(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet_kw(::GreetEnum, who) default=""
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet_kw)) == 3
+            @test InstanceDispatchTest.greet_kw(InstanceDispatchTest.Hello, "me") == "Hello me"
+            @test InstanceDispatchTest.greet_kw(InstanceDispatchTest.Goodbye, "me") == "Goodbye me"
+            @test_opt InstanceDispatchTest.greet_kw(InstanceDispatchTest.Hello, "me")
+        end
+
         @testset "EnumX" begin
             InstanceDispatchTest.eval(:(using EnumX))
             InstanceDispatchTest.eval(

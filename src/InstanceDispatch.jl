@@ -4,7 +4,7 @@ using MacroTools
 buildcalleearg(splitted) = ifelse(splitted[3], QuoteNode(Expr(:..., splitted[1])), QuoteNode(splitted[1]))
 
 """
-    @instancedispatch myfunction(::T, args...; kwargs...)
+    @instancedispatch myfunction(::T, args...; kwargs...) default=nothing
 
 Write a specialized function to dispatch on instances values of type `T`. The only
 reauirement is that `Type{T}` has its own method for `Base.instances`.
@@ -30,7 +30,9 @@ function greet(e::GreetEnum, who)
         return greet(Val(Hello), who)
     elseif e == Goodbye
         return greet(Val(Goodbye), who)
-    else end
+    else 
+        nothing
+    end
 end
 ```
 
@@ -60,7 +62,7 @@ All the arguments in the function call given to the macro will be passed in the 
         #...
     end
     ```
-    That return a default value.
+    That returns a default value.
 
 It is possible to use type annotations to help Julia figure out the type of the return value:
 ```julia
@@ -73,8 +75,22 @@ function greet(::Val{Goodbye}, who)
 end
 @instancedispatch greet(::GreetEnum, who)::String
 ```
+
+However, this might cause linting errors if the `default` value given to the macro
+does not fit this type. You can set the default (although never used) value that 
+the function will return using the `default` keyword parameter:
+```julia
+@enum GreetEnum Hello Goodbye
+function greet(::Val{Hello}, who)
+    return "Hello " * who
+end
+function greet(::Val{Goodbye}, who)
+    return "Goodbye " * who
+end
+@instancedispatch greet(::GreetEnum, who) default=""
+```
 """
-macro instancedispatch(fcall)
+macro instancedispatch(fcall, kw=:(default=nothing))
     has_type_annotation = @capture(fcall, newfcall_::R_)
     if has_type_annotation
         has_where_call = @capture(R, newR_ where {T__})
@@ -88,6 +104,9 @@ macro instancedispatch(fcall)
             fcall = newfcall
         end
     end
+    @capture(kw, new_kw_=default_return_) || throw(ArgumentError("Unrecognized second argument for @instancedispatch. It should be in the form `default=value`. Got $(kw)"))
+    kw = new_kw
+    kw == :default || throw(ArgumentError("Unrecognized keyword argument for @instancedispatch: $(kw)"))
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
     original_arguments = splitarg.(args)
     length(original_arguments) ≥ 1 || throw(ArgumentError("@instancedispatch expects at least one argument to the call: the enumeration type. Example: `@instancedispatch foo(::MyEnum)`. Got $(args)."))
@@ -134,7 +153,7 @@ macro instancedispatch(fcall)
     return Expr(
         :escape, quote
             let
-                ifelseblock = foldr(instances($enum_type), init=:()) do instance, r
+                ifelseblock = foldr(instances($enum_type), init=$default_return) do instance, r
                     Expr(
                         :elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)),
                         Expr(
