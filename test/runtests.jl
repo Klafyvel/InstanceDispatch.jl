@@ -227,7 +227,7 @@ end
                     function greet_kw(::Val{Goodbye}, who)
                         return "Goodbye " * who
                     end
-                    @instancedispatch greet_kw(::GreetEnum, who) default=""
+                    @instancedispatch greet_kw(::GreetEnum, who) default = ""
                 end
             )
             @test length(methods(InstanceDispatchTest.greet_kw)) == 3

@@ -90,12 +90,12 @@ end
 @instancedispatch greet(::GreetEnum, who) default=""
 ```
 """
-macro instancedispatch(fcall, kw=:(default=nothing))
+macro instancedispatch(fcall, kw = :(default = nothing))
     has_type_annotation = @capture(fcall, newfcall_::R_)
     if has_type_annotation
         has_where_call = @capture(R, newR_ where {T__})
         if has_where_call
-            R = newR 
+            R = newR
         end
         fcall = newfcall
     else
@@ -104,7 +104,7 @@ macro instancedispatch(fcall, kw=:(default=nothing))
             fcall = newfcall
         end
     end
-    @capture(kw, new_kw_=default_return_) || throw(ArgumentError("Unrecognized second argument for @instancedispatch. It should be in the form `default=value`. Got $(kw)"))
+    @capture(kw, new_kw_ = default_return_) || throw(ArgumentError("Unrecognized second argument for @instancedispatch. It should be in the form `default=value`. Got $(kw)"))
     kw = new_kw
     kw == :default || throw(ArgumentError("Unrecognized keyword argument for @instancedispatch: $(kw)"))
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
@@ -153,7 +153,7 @@ macro instancedispatch(fcall, kw=:(default=nothing))
     return Expr(
         :escape, quote
             let
-                ifelseblock = foldr(instances($enum_type), init=$default_return) do instance, r
+                ifelseblock = foldr(instances($enum_type), init = $default_return) do instance, r
                     Expr(
                         :elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)),
                         Expr(
