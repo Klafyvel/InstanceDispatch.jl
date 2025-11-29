@@ -4,7 +4,7 @@ using MacroTools
 buildcalleearg(splitted) = ifelse(splitted[3], QuoteNode(Expr(:..., splitted[1])), QuoteNode(splitted[1]))
 
 """
-    @instancedispatch myfunction(::T, args...; kwargs...) default=nothing
+    @instancedispatch myfunction(::T, args...; kwargs...)
 
 Write a specialized function to dispatch on instances values of type `T`. The only
 reauirement is that `Type{T}` has its own method for `Base.instances`.
@@ -23,15 +23,13 @@ end
 @instancedispatch greet(::GreetEnum, who)
 ```
 
-This last line is equivalent to defining the following method:
+This last line is equivalent to the following method:
 ```julia
 function greet(e::GreetEnum, who)
     if e == Hello
         return greet(Val(Hello), who)
-    elseif e == Goodbye
+    elseif 
         return greet(Val(Goodbye), who)
-    else 
-        nothing
     end
 end
 ```
@@ -75,22 +73,8 @@ function greet(::Val{Goodbye}, who)
 end
 @instancedispatch greet(::GreetEnum, who)::String
 ```
-
-However, this might cause linting errors if the `default` value given to the macro
-does not fit this type. You can set the default (although never used) value that 
-the function will return using the `default` keyword parameter:
-```julia
-@enum GreetEnum Hello Goodbye
-function greet(::Val{Hello}, who)
-    return "Hello " * who
-end
-function greet(::Val{Goodbye}, who)
-    return "Goodbye " * who
-end
-@instancedispatch greet(::GreetEnum, who) default=""
-```
 """
-macro instancedispatch(fcall, kw = :(default = nothing))
+macro instancedispatch(fcall)
     has_type_annotation = @capture(fcall, newfcall_::R_)
     if has_type_annotation
         has_where_call = @capture(R, newR_ where {T__})
@@ -104,9 +88,6 @@ macro instancedispatch(fcall, kw = :(default = nothing))
             fcall = newfcall
         end
     end
-    @capture(kw, new_kw_ = default_return_) || throw(ArgumentError("Unrecognized second argument for @instancedispatch. It should be in the form `default=value`. Got $(kw)"))
-    kw = new_kw
-    kw == :default || throw(ArgumentError("Unrecognized keyword argument for @instancedispatch: $(kw)"))
     @capture(fcall, fname_(args__; kwargs__) | fname_(args__)) || throw(ArgumentError("@instancedispatch must be called on a function call. Example: `@instancedispatch foo(::MyEnum)`. Got $(prettify(fcall))"))
     original_arguments = splitarg.(args)
     length(original_arguments) ≥ 1 || throw(ArgumentError("@instancedispatch expects at least one argument to the call: the enumeration type. Example: `@instancedispatch foo(::MyEnum)`. Got $(args)."))
@@ -153,19 +134,21 @@ macro instancedispatch(fcall, kw = :(default = nothing))
     return Expr(
         :escape, quote
             let
-                ifelseblock = foldr(instances($enum_type), init = $default_return) do instance, r
-                    Expr(
-                        :elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)),
-                        Expr(
-                            :return, Expr(
-                                :call, $fname_expr,
-                                Expr(:parameters, $(callee_kwarguments...)),
-                                $(callee_arguments_pre...),
-                                Expr(:call, :Val, QuoteNode(instance)),
-                                $(callee_arguments...)
-                            )
-                        ), r
+                ifelseblock = foldr(Base.instances($enum_type), init = nothing) do instance, r
+                    fcall = Expr(
+                        :return, Expr(
+                            :call, $fname_expr,
+                            Expr(:parameters, $(callee_kwarguments...)),
+                            $(callee_arguments_pre...),
+                            Expr(:call, :Val, QuoteNode(instance)),
+                            $(callee_arguments...)
+                        )
                     )
+                    if isnothing(r)
+                        fcall
+                    else
+                        Expr(:elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)), fcall, r)
+                    end
                 end
                 ifelseblock.head = :if
                 $fdef

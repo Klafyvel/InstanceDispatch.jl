@@ -29,9 +29,8 @@ This last line is equivalent to defining the following method:
 function greet(e::GreetEnum, who)
     if e == Hello
         return greet(Val(Hello), who)
-    elseif e == Goodbye
-        return greet(Val(Goodbye), who)
     else
+        return greet(Val(Goodbye), who)
     end
 end
 ```
