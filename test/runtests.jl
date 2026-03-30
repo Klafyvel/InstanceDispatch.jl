@@ -233,6 +233,20 @@ end
             @test InstanceDispatchTest.greet9(InstanceDispatchTest.Fruit.Banana) == "Hi banana"
         end
 
+        @testset "Singleton enumeration (but why T_T)?" begin
+            InstanceDispatchTest.eval(
+                quote
+                    @enum SingleEnum Alone
+                    function greet10(::Val{Alone}, who)
+                        return join(["Hello, lonely", who], " ")
+                    end
+                    @instancedispatch greet10(::SingleEnum, who)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet10)) == 2
+            @test InstanceDispatchTest.greet10(InstanceDispatchTest.Alone, "me") == "Hello, lonely me"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))

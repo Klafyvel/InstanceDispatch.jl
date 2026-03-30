@@ -134,8 +134,28 @@ macro instancedispatch(fcall)
     return Expr(
         :escape, quote
             let
-                ifelseblock = foldr(Base.instances($enum_type), init = nothing) do instance, r
-                    fcall = Expr(
+                ifelseblock = if length(Base.instances($enum_type)) > 1
+                    block = foldr(Base.instances($enum_type), init = nothing) do instance, r
+                        fcall = Expr(
+                            :return, Expr(
+                                :call, $fname_expr,
+                                Expr(:parameters, $(callee_kwarguments...)),
+                                $(callee_arguments_pre...),
+                                Expr(:call, :Val, QuoteNode(instance)),
+                                $(callee_arguments...)
+                            )
+                        )
+                        if isnothing(r)
+                            fcall
+                        else
+                            Expr(:elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)), fcall, r)
+                        end
+                    end
+                    block.head = :if
+                    block
+                else
+                    instance = only(Base.instances($enum_type))
+                    Expr(
                         :return, Expr(
                             :call, $fname_expr,
                             Expr(:parameters, $(callee_kwarguments...)),
@@ -144,13 +164,7 @@ macro instancedispatch(fcall)
                             $(callee_arguments...)
                         )
                     )
-                    if isnothing(r)
-                        fcall
-                    else
-                        Expr(:elseif, Expr(:call, :(==), $enum_argument_name, QuoteNode(instance)), fcall, r)
-                    end
                 end
-                ifelseblock.head = :if
                 $fdef
             end |> eval
         end
