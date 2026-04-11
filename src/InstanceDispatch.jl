@@ -107,7 +107,7 @@ macro instancedispatch(fcall)
             slurp && throw(ArgumentError("The dispatched argument cannot be a slurp!"))
             push!(definition_arguments, (enum_argument_name, arg_type, false, default))
         else
-            arg = (something(arg_name, gensym(arg_type)), arg_type, slurp, default)
+            arg = (something(arg_name, gensym(namify(arg_type))), arg_type, slurp, default)
             push!(definition_arguments, arg)
             isenumdef && push!(callee_arguments_pre, arg)
             !isenumdef && push!(callee_arguments, arg)

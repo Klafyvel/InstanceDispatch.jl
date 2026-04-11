@@ -5,6 +5,9 @@ using JET
 
 module InstanceDispatchTest
     using InstanceDispatch
+    module InnerModule
+        struct InnerType end
+    end
     @enum GreetEnum Hello Goodbye
 end
 
@@ -245,6 +248,20 @@ end
             )
             @test length(methods(InstanceDispatchTest.greet10)) == 2
             @test InstanceDispatchTest.greet10(InstanceDispatchTest.Alone, "me") == "Hello, lonely me"
+        end
+
+        @testset "Do not fail on complex type names" begin
+            InstanceDispatchTest.eval(
+                quote
+                    @enum Fruit Apple Banana
+                    greet11(::Val{Apple}, ::InnerModule.InnerType) = "Hi apple"
+                    greet11(::Val{Banana}, ::InnerModule.InnerType) = "Hi banana"
+                    @instancedispatch greet11(::Fruit, ::InnerModule.InnerType)
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet11)) == 3
+            @test InstanceDispatchTest.greet11(InstanceDispatchTest.Apple, InstanceDispatchTest.InnerModule.InnerType()) == "Hi apple"
+            @test InstanceDispatchTest.greet11(InstanceDispatchTest.Banana, InstanceDispatchTest.InnerModule.InnerType()) == "Hi banana"
         end
 
         @testset "Inadequate expressions" begin
