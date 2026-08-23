@@ -17,7 +17,7 @@ end
     end
 
     @testset "Code linting (JET.jl)" begin
-        JET.test_package(InstanceDispatch; target_defined_modules = true)
+        JET.test_package(InstanceDispatch, target_modules = (:InstanceDispatch,))
     end
 
     @testset "@instancedispatch macro" begin
