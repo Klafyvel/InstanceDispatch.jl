@@ -264,6 +264,27 @@ end
             @test InstanceDispatchTest.greet11(InstanceDispatchTest.Banana, InstanceDispatchTest.InnerModule.InnerType()) == "Hi banana"
         end
 
+        @testset "prefix expression" begin
+            InstanceDispatchTest.eval(
+                quote
+                    function greet12(::Val{Hello}, who)
+                        return "Hello " * who
+                    end
+                    function greet12(::Val{Goodbye}, who)
+                        return "Goodbye " * who
+                    end
+                    @instancedispatch greet12(::GreetEnum, who) begin
+                        lowercase(who) == "elon" && return "Everyone hates $who"
+                    end
+                end
+            )
+            @test length(methods(InstanceDispatchTest.greet12)) == 3
+            @test InstanceDispatchTest.greet12(InstanceDispatchTest.Hello, "You") == "Hello You"
+            @test InstanceDispatchTest.greet12(InstanceDispatchTest.Goodbye, "Me") == "Goodbye Me"
+            @test InstanceDispatchTest.greet12(InstanceDispatchTest.Goodbye, "Elon") == "Everyone hates Elon"
+            @test InstanceDispatchTest.greet12(InstanceDispatchTest.Hello, "Elon") == "Everyone hates Elon"
+        end
+
         @testset "Inadequate expressions" begin
             # not a function call
             @test_throws LoadError InstanceDispatchTest.eval(:(@instancedispatch greet(e::GreetEnum, who) = println(e, who)))

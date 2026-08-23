@@ -73,8 +73,22 @@ function greet(::Val{Goodbye}, who)
 end
 @instancedispatch greet(::GreetEnum, who)::String
 ```
+
+`@instancedispatch` also supports including a prefix expression as a second parameter. This can be used, for example, to perform some tests before dispatching.
+```julia
+@enum GreetEnum Hello Goodbye
+function greet(::Val{Hello}, who)
+    return "Hello " * who
+end
+function greet(::Val{Goodbye}, who)
+    return "Goodbye " * who
+end
+@instancedispatch greet(::GreetEnum, who) begin
+    lowercase(who) == "elon" && error("We don't speak to you.")
+end
+```
 """
-macro instancedispatch(fcall)
+macro instancedispatch(fcall, prefix = :())
     has_type_annotation = @capture(fcall, newfcall_::R_)
     if has_type_annotation
         has_where_call = @capture(R, newR_ where {T__})
@@ -127,13 +141,15 @@ macro instancedispatch(fcall)
     end
     fdef = if has_where_call
         types = QuoteNode.(T)
-        :(Expr(:function, Expr(:where, $fdefcall, $(types...)), ifelseblock))
+        :(Expr(:function, Expr(:where, $fdefcall, $(types...)), Expr(:block, :($prefix), ifelseblock)))
     else
-        :(Expr(:function, $fdefcall, ifelseblock))
+        :(Expr(:function, $fdefcall, Expr(:block, :($prefix), ifelseblock)))
     end
+    q = QuoteNode(prefix)
     return Expr(
         :escape, quote
             let
+                prefix = $q
                 ifelseblock = if length(Base.instances($enum_type)) > 1
                     block = foldr(Base.instances($enum_type), init = nothing) do instance, r
                         fcall = Expr(
